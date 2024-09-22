@@ -35,7 +35,9 @@ import Data.Array
 -- you remove the Eq a => constraint from the type!
 
 allEqual :: Eq a => [a] -> Bool
-allEqual xs = todo
+allEqual [] = True
+allEqual (x:[]) = True
+allEqual (x:x2:xs) = x == x2 && allEqual (x2:xs)
 
 ------------------------------------------------------------------------------
 -- Ex 2: implement the function distinct which returns True if all
@@ -50,7 +52,7 @@ allEqual xs = todo
 --   distinct [1,2] ==> True
 
 distinct :: Eq a => [a] -> Bool
-distinct = todo
+distinct xs = nub xs == xs
 
 ------------------------------------------------------------------------------
 -- Ex 3: implement the function middle that returns the middle value
@@ -63,7 +65,8 @@ distinct = todo
 --   middle 'b' 'a' 'c'  ==> 'b'
 --   middle 1 7 3        ==> 3
 
-middle = todo
+middle :: Ord a => a -> a -> a -> a
+middle a b c = head . tail . sort $ a:b:c:[]
 
 ------------------------------------------------------------------------------
 -- Ex 4: return the range of an input list, that is, the difference
@@ -78,8 +81,8 @@ middle = todo
 --   rangeOf [4,2,1,3]          ==> 3
 --   rangeOf [1.5,1.0,1.1,1.2]  ==> 0.5
 
-rangeOf :: [a] -> a
-rangeOf = todo
+rangeOf :: (Ord a, Num a) => [a] -> a
+rangeOf xs = maximum xs - minimum xs 
 
 ------------------------------------------------------------------------------
 -- Ex 5: given a (non-empty) list of (non-empty) lists, return the longest
@@ -97,7 +100,20 @@ rangeOf = todo
 --   longest [[1,2,3],[4,5],[6]] ==> [1,2,3]
 --   longest ["bcd","def","ab"] ==> "bcd"
 
-longest = todo
+longest :: (Ord a) => [[a]] -> [a] 
+--longest xs = let go x v = if length x > length v
+--                    then x
+--                    else if length x < length v
+--                        then v
+--                        else if head x < head v
+--                            then x
+--                            else v
+--    in foldr go (head xs) xs  
+longest xs = foldr (\x v -> if length x > length v then x else 
+    if length x < length v then v else
+        if head x < head v then x else v)
+    (head xs) xs
+
 
 ------------------------------------------------------------------------------
 -- Ex 6: Implement the function incrementKey, that takes a list of
@@ -113,8 +129,11 @@ longest = todo
 --   incrementKey True [(True,1),(False,3),(True,4)] ==> [(True,2),(False,3),(True,5)]
 --   incrementKey 'a' [('a',3.4)] ==> [('a',4.4)]
 
-incrementKey :: k -> [(k,v)] -> [(k,v)]
-incrementKey = todo
+incrementKey :: (Eq k, Num v) => k -> [(k,v)] -> [(k,v)]
+incrementKey k []  = []
+incrementKey k (kv:kvs) = if k == fst kv
+    then (k, (snd kv) + 1) : incrementKey k kvs
+    else kv : incrementKey k kvs
 
 ------------------------------------------------------------------------------
 -- Ex 7: compute the average of a list of values of the Fractional
@@ -129,7 +148,7 @@ incrementKey = todo
 -- length to a Fractional
 
 average :: Fractional a => [a] -> a
-average xs = todo
+average xs = sum xs / (fromIntegral $ length xs)
 
 ------------------------------------------------------------------------------
 -- Ex 8: given a map from player name to score and two players, return
@@ -148,7 +167,13 @@ average xs = todo
 --     ==> "Lisa"
 
 winner :: Map.Map String Int -> String -> String -> String
-winner scores player1 player2 = todo
+winner scores player1 player2 = if points scores player1 >= points scores player2
+    then player1
+    else player2
+
+points :: Map.Map String Int -> String -> Int
+points scores player = case Map.lookup player scores of Just p  -> p
+                                                        Nothing -> 0
 
 ------------------------------------------------------------------------------
 -- Ex 9: compute how many times each value in the list occurs. Return
@@ -163,7 +188,13 @@ winner scores player1 player2 = todo
 --     ==> Map.fromList [(False,3),(True,1)]
 
 freqs :: (Eq a, Ord a) => [a] -> Map.Map a Int
-freqs xs = todo
+freqs xs = let
+  increaseFreq x mx = Map.alter go x mx
+    where
+      go y = case y of Nothing -> Just 1
+                       Just z  -> Just (z + 1)
+  in
+  foldr increaseFreq Map.empty xs
 
 ------------------------------------------------------------------------------
 -- Ex 10: recall the withdraw example from the course material. Write a
@@ -191,7 +222,17 @@ freqs xs = todo
 --     ==> fromList [("Bob",100),("Mike",50)]
 
 transfer :: String -> String -> Int -> Map.Map String Int -> Map.Map String Int
-transfer from to amount bank = todo
+transfer from to amount bank = if amount < 1
+  then bank
+  else case Map.lookup from bank 
+      of Nothing -> bank
+         Just f  -> if amount > f
+                      then bank
+                      else case Map.lookup to bank
+                      of Nothing -> bank
+                         Just t  -> Map.alter (transferMoney "debit") to (Map.alter (transferMoney "credit") from bank)
+                           where transferMoney transaction account = case transaction of "debit"  -> Just (t + amount) 
+                                                                                         "credit" -> Just (f - amount)
 
 ------------------------------------------------------------------------------
 -- Ex 11: given an Array and two indices, swap the elements in the indices.
@@ -201,7 +242,9 @@ transfer from to amount bank = todo
 --         ==> array (1,4) [(1,"one"),(2,"three"),(3,"two"),(4,"four")]
 
 swap :: Ix i => i -> i -> Array i a -> Array i a
-swap i j arr = todo
+swap i j arr = arr // ((i, jValue):(j, iValue):[])
+  where jValue = arr ! j
+        iValue = arr ! i
 
 ------------------------------------------------------------------------------
 -- Ex 12: given an Array, find the index of the largest element. You
@@ -212,4 +255,10 @@ swap i j arr = todo
 -- Hint: check out Data.Array.indices or Data.Array.assocs
 
 maxIndex :: (Ix i, Ord a) => Array i a -> i
-maxIndex = todo
+maxIndex arr = foldr maxI i indices
+  where firstElement = arr ! i
+        indices = Data.Array.indices arr
+        i = head indices
+        maxI j k = if arr ! j > arr ! k
+                     then j
+                     else k
